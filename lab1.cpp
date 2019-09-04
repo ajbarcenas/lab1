@@ -1,6 +1,6 @@
 //
 //modified by: Alexisis Barcenas
-//date: 8/30/2019
+//date: 09/03/2019
 //
 //3350 Spring 2019 Lab-1
 //This program demonstrates the use of OpenGL and XWindows
@@ -33,15 +33,17 @@
 using namespace std;
 #include <stdio.h>
 #include <cstdlib>
+#include <unistd.h>
 #include <ctime>
 #include <cstring>
 #include <cmath>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <GL/glx.h>
+#include "fonts.h"
 
 const int MAX_PARTICLES = 2000;
-const float GRAVITY     = 0.1;
+const float GRAVITY = 0.1;
 
 //some structures
 
@@ -112,6 +114,7 @@ int main()
 		render();
 		x11.swapBuffers();
 	}
+	cleanup_fonts();
 	return 0;
 }
 
@@ -207,6 +210,9 @@ void init_opengl(void)
 	glOrtho(0, g.xres, 0, g.yres, -1, 1);
 	//Set the screen background color
 	glClearColor(0.1, 0.1, 0.1, 1.0);
+	//Do this to allow fonts
+	glEnable(GL_TEXTURE_2D);
+	initialize_fonts();
 }
 
 void makeParticle(int x, int y)
@@ -247,14 +253,14 @@ void check_mouse(XEvent *e)
 			//Left button was pressed.
 			int y = g.yres - e->xbutton.y;
 			makeParticle(e->xbutton.x, y);
-            makeParticle(e->xbutton.x, y);
-            makeParticle(e->xbutton.x, y);
-            makeParticle(e->xbutton.x, y);
-            makeParticle(e->xbutton.x, y);
-            makeParticle(e->xbutton.x, y);
-            makeParticle(e->xbutton.x, y);
-            makeParticle(e->xbutton.x, y);
-            makeParticle(e->xbutton.x, y);
+			makeParticle(e->xbutton.x, y);
+			makeParticle(e->xbutton.x, y);
+			makeParticle(e->xbutton.x, y);
+			makeParticle(e->xbutton.x, y);
+			makeParticle(e->xbutton.x, y);
+			makeParticle(e->xbutton.x, y);
+			makeParticle(e->xbutton.x, y);
+			makeParticle(e->xbutton.x, y);
 			return;
 		}
 		if (e->xbutton.button==3) {
@@ -268,9 +274,9 @@ void check_mouse(XEvent *e)
 			savex = e->xbutton.x;
 			savey = e->xbutton.y;
 			//Code placed here will execute whenever the mouse moves.
-            int y = g.yres - e->xbutton.y;                
-            for (int i =0; i < 10; i++)            
-            makeParticle(e->xbutton.x, y);
+			int y = g.yres - e->xbutton.y;
+			for (int i =0; i < 10; i++)
+			makeParticle(e->xbutton.x, y);
 
 
 		}
@@ -302,20 +308,21 @@ void movement()
 {
 	if (g.n <= 0)
 		return;
-    for (int i=0; i <g.n; i++){	
-        Particle *p = &g.particle[i];
+	for (int i=0; i <g.n; i++) {
+		Particle *p = &g.particle[i];
 
-	    p->s.center.x += p->velocity.x;
-	    p->s.center.y += p->velocity.y;
-        p->velocity.y -= GRAVITY;
+		p->s.center.x += p->velocity.x;
+		p->s.center.y += p->velocity.y;
+		p->velocity.y -= GRAVITY;
 
-	    //check for collision with shapes...
-	    Shape *s = &g.box;
-    
-    if (p->s.center.y < s->center.y + s->height && 
-            p->s.center.x > s->center.x - s->width && 
-       p->s.center.x < s->center.x + s->width) 
-            p->velocity.y = -(p->velocity.y * 0.8);
+		//check for collision with shapes...
+		Shape *s = &g.box;
+	
+		if (p->s.center.y < s->center.y + s->height && 
+			p->s.center.x > s->center.x - s->width && 
+			p->s.center.x < s->center.x + s->width &&
+			p->s.center.y > s->center.y - s->height) 
+			p->velocity.y = -(p->velocity.y * 0.8);
 
 
 
@@ -323,7 +330,7 @@ void movement()
 	if (p->s.center.y < 0.0) {
 		//cout << "off screen" << endl;
 		g.particle[i] = g.particle[g.n-i]; 
-        --g.n;
+		--g.n;
 
 }
 	}
@@ -335,7 +342,7 @@ void render()
 	//Draw shapes...
 	//draw the box
 	Shape *s;
-	glColor3ub(90,140,90);
+	glColor3ub(255,143,143);
 	s = &g.box;
 	glPushMatrix();
 	glTranslatef(s->center.x, s->center.y, s->center.z);
@@ -352,10 +359,10 @@ void render()
 	//
 	//Draw particles here
 	//if (g.n > 0) 
-    for (int i=0; i <g.n; i++){
+	for (int i=0; i <g.n; i++){
 		//There is at least one particle to draw.
 		glPushMatrix();
-		glColor3ub(150,160,220);
+		glColor3ub(10,255,63);
 		Vec *c = &g.particle[i].s.center;
 		w = h = 2;
 		glBegin(GL_QUADS);
@@ -368,15 +375,11 @@ void render()
 	}
 	//
 	//Draw your 2D text here
-
-
-
-
-
-
-
-
-
+	Rect r;
+	r.bot = g.yres - 20;
+	r.left = 1;
+	r.center = 0;
+	ggprint8b(&r, 16, 0xff0008f, "Requirements");
 }
 
 
