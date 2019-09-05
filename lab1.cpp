@@ -376,8 +376,8 @@ void render()
 	//
 	//Draw your 2D text here
 	Rect r;
-	r.bot = g.yres - 20;
-	r.left = 1;
+	r.bot = (g.yres/2)-105;
+	r.left = g.xres/2;
 	r.center = 0;
 	ggprint8b(&r, 16, 0xff0008f, "Requirements");
 }
