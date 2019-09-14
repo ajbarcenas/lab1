@@ -41,8 +41,9 @@ using namespace std;
 #include <X11/keysym.h>
 #include <GL/glx.h>
 #include "fonts.h"
+#include <string.h>
 
-const int MAX_PARTICLES = 2000;
+const int MAX_PARTICLES = 1500;
 const float GRAVITY = 0.1;
 
 //some structures
@@ -55,6 +56,11 @@ struct Shape {
 	float width, height;
 	float radius;
 	Vec center;
+	Shape() {
+		//define a box shape
+		width = 100;
+		height = 10;
+	}
 };
 
 struct Particle {
@@ -65,7 +71,7 @@ struct Particle {
 class Global {
 public:
 	int xres, yres;
-	Shape box;
+	Shape box[4];
 	Particle particle[MAX_PARTICLES];
 	int n;
 	Global();
@@ -84,6 +90,64 @@ public:
 	XEvent getXNextEvent();
 	void swapBuffers();
 } x11;
+
+class Image {
+public:
+	int width, height;
+	unsigned char* data;
+	~Image() { delete[] data; }
+	Image(const char* fname) {
+		if (fname[0] == '\0')
+			return;
+		//printf("fname **%s**\n", fname);
+		int ppmFlag = 0;
+		char name[40];
+		strcpy(name, fname);
+		int slen = strlen(name);
+		char ppmname[80];
+		if (strncmp(name + (slen - 4), ".ppm", 4) == 0)
+			ppmFlag = 1;
+		if (ppmFlag) {
+			strcpy(ppmname, name);
+		}
+		else {
+			name[slen - 4] = '\0';
+			//printf("name **%s**\n", name);
+			sprintf(ppmname, "%s.ppm", name);
+			//printf("ppmname **%s**\n", ppmname);
+			char ts[100];
+			//system("convert eball.jpg eball.ppm");
+			sprintf(ts, "convert %s %s", fname, ppmname);
+			system(ts);
+		}
+		//sprintf(ts, "%s", name);
+		FILE* fpi = fopen(ppmname, "r");
+		if (fpi) {
+			char line[200];
+			fgets(line, 200, fpi);
+			fgets(line, 200, fpi);
+			//skip comments and blank lines
+			while (line[0] == '#' || strlen(line) < 2)
+				fgets(line, 200, fpi);
+			sscanf(line, "%i %i", &width, &height);
+			fgets(line, 200, fpi);
+			//get pixel data
+			int n = width * height * 3;
+			data = new unsigned char[n];
+			for (int i = 0; i < n; i++)
+				data[i] = fgetc(fpi);
+			fclose(fpi);
+		}
+		else {
+			printf("ERROR opening image: %s\n", ppmname);
+			exit(0);
+		}
+		if (!ppmFlag)
+			unlink(ppmname);
+	}
+};
+
+Image img = "Goo.PNG";
 
 //Function prototypes
 void init_opengl(void);
@@ -125,11 +189,6 @@ Global::Global()
 {
 	xres = 800;
 	yres = 600;
-	//define a box shape
-	box.width = 100;
-	box.height = 10;
-	box.center.x = 120 + 5*65;
-	box.center.y = 500 - 5*60;
 	n = 0;
 }
 
@@ -227,8 +286,9 @@ void makeParticle(int x, int y)
 	p->s.center.x = x;
 	p->s.center.y = y;
 	p->velocity.y = 0.0;
-	p->velocity.y =  ((double)rand()/(double)RAND_MAX)-0.5;
-	p->velocity.x =  ((double)rand()/(double)RAND_MAX)-0.5 +0.25;
+	//p->velocity.y =  ((double)rand()/(double)RAND_MAX)-0.5 - .25;
+	p->velocity.y = 0;
+	p->velocity.x =  ((double)rand()/(double)RAND_MAX)-0.5 +0.85;
 	++g.n;
 }
 
@@ -316,46 +376,92 @@ void movement()
 		p->velocity.y -= GRAVITY;
 
 		//check for collision with shapes...
-		Shape *s = &g.box;
-	
-		if (p->s.center.y < s->center.y + s->height && 
-			p->s.center.x > s->center.x - s->width && 
-			p->s.center.x < s->center.x + s->width &&
-			p->s.center.y > s->center.y - s->height) 
+		int x_scale = 100;
+		int y_scale = 75;
+		g.box[0].center.x = 150;
+		g.box[0].center.y = 475;
+		for (int j = 0; j < 6; j++) {
+			g.box[j].center.x = 150 + j * x_scale;
+			g.box[j].center.y = 475 - j * y_scale;
+			if (p->s.center.y < g.box[j].center.y + g.box[j].height &&
+				p->s.center.x > g.box[j].center.x - g.box[j].width &&
+				p->s.center.x < g.box[j].center.x + g.box[j].width &&
+				p->s.center.y > g.box[j].center.y - g.box[j].height) {
+				if (p->velocity.y < 0) {
+					p->s.center.y = g.box[j].center.y + g.box[j].height;
+				}
+				else {
+					p->s.center.y = g.box[j].center.y - g.box[j].height;
+				}
+				p->velocity.y = -(p->velocity.y * 0.8);
+			}
+		}
+
+		//g.box[1].center.x = 225;
+		//g.box[1].center.y = 400;
+
+/*		if (p->s.center.y < g.box[1].center.y + g.box[1].height &&
+			p->s.center.x > g.box[1].center.x - g.box[1].width &&
+			p->s.center.x < g.box[1].center.x + g.box[1].width &&
+			p->s.center.y > g.box[1].center.y - g.box[1].height) {
+			if (p->velocity.y < 0) {
+				p->s.center.y = g.box[1].center.y + g.box[1].height;
+			}
+			else {
+				p->s.center.y = g.box[1].center.y - g.box[1].height;
+			}
 			p->velocity.y = -(p->velocity.y * 0.8);
-
-
-
-	//check for off-screen
-	if (p->s.center.y < 0.0) {
-		//cout << "off screen" << endl;
-		g.particle[i] = g.particle[g.n-i]; 
-		--g.n;
-
-}
+		}
+*/
+		//check for off-screen
+		if (p->s.center.y < 0.0) {
+			//cout << "off screen" << endl;
+			g.particle[i] = g.particle[g.n - i];
+			--g.n;
+		}
 	}
 }
 
 void render()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-	//Draw shapes...
+	//Drawing the first shape
 	//draw the box
-	Shape *s;
-	glColor3ub(255,143,143);
-	s = &g.box;
-	glPushMatrix();
-	glTranslatef(s->center.x, s->center.y, s->center.z);
-	float w, h;
-	w = s->width;
-	h = s->height;
-	glBegin(GL_QUADS);
+	int x_scale = 100;
+	int y_scale = 75;
+
+	float h, w;
+
+	for (int i = 0; i < 5; i++) {
+		g.box[i].center.x = 150 + i * x_scale;
+		g.box[i].center.y = 475 - i * y_scale;
+		glColor3ub(255, 143, 143);
+		glPushMatrix();
+		glTranslatef(g.box[i].center.x, g.box[i].center.y, 0);
+		w = g.box[i].width;
+		h = g.box[i].height;
+		glBegin(GL_QUADS);
 		glVertex2i(-w, -h);
-		glVertex2i(-w,  h);
-		glVertex2i( w,  h);
-		glVertex2i( w, -h);
+		glVertex2i(-w, h);
+		glVertex2i(w, h);
+		glVertex2i(w, -h);
+		glEnd();
+		glPopMatrix();
+	}
+/*	//Draw Box 2
+	glColor3ub(255, 143, 143);
+	glPushMatrix();
+	glTranslatef(225, 400, 0);
+	w = g.box[1].width;
+	h = g.box[1].height;
+	glBegin(GL_QUADS);
+	glVertex2i(-w, -h);
+	glVertex2i(-w, h);
+	glVertex2i(w, h);
+	glVertex2i(w, -h);
 	glEnd();
 	glPopMatrix();
+*/
 	//
 	//Draw particles here
 	//if (g.n > 0) 
@@ -375,11 +481,11 @@ void render()
 	}
 	//
 	//Draw your 2D text here
-	Rect r;
-	r.bot = (g.yres/2)-105;
-	r.left = g.xres/2;
-	r.center = 0;
-	ggprint8b(&r, 16, 0xff0008f, "Requirements");
+	Rect r[1];
+	r[0].bot = (g.yres/2)-105;
+	r[0].left = g.xres/2;
+	r[0].center = 0;
+	ggprint8b(&r[0], 16, 0xff0008f, "Requirements");
 }
 
 
