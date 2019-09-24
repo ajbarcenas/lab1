@@ -488,7 +488,8 @@ void render()
 	for (int i = 0; i < g.n; i++) {
 		//There is at least one particle to draw.
 		glPushMatrix();
-		glColor3ub(g.particle[i].color.r, g.particle[i].color.g, g.particle[i].color.b);
+		glColor3ub(g.particle[i].color.r, g.particle[i].color.g,
+			   g.particle[i].color.b);
 		Vec* c = &g.particle[i].s.center;
 		//Making particles different sizes
 		if (i % 2 == 0)
