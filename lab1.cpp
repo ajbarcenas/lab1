@@ -318,10 +318,10 @@ void makeParticle(int x, int y)
 	// Assigning Lava-like colors to the particles
 	p->color.r = (rand() % (55)) + 200;
         if (rand() % 2 == 0)
-			p->color.g = (rand() % 140) + 60;
-		else 
-			p->color.g = 0;
-		p->color.b = 5;
+		p->color.g = (rand() % 140) + 60;
+	else 
+		p->color.g = 0;
+	p->color.b = 5;
 	++g.n;
 }
 
