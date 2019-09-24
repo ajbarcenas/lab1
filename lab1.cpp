@@ -1,6 +1,6 @@
 //
 //modified by: Alexisis Barcenas
-//date: 09/03/2019
+//Last modification date: 09/24/2019
 //
 //3350 Spring 2019 Lab-1
 //This program demonstrates the use of OpenGL and XWindows
@@ -43,13 +43,17 @@ using namespace std;
 #include "fonts.h"
 #include <string.h>
 
-const int MAX_PARTICLES = 1500;
-const float GRAVITY = 0.1;
-
+const int MAX_PARTICLES = 2000;
+const float GRAVITY = 0.3;
+//defined type
+typedef double Vect[3];
 //some structures
-
 struct Vec {
 	float x, y, z;
+};
+
+struct Color {
+	int r, g, b;
 };
 
 struct Shape {
@@ -61,36 +65,14 @@ struct Shape {
 		width = 100;
 		height = 10;
 	}
+	Color color;
 };
 
 struct Particle {
 	Shape s;
 	Vec velocity;
+	Color color;
 };
-
-class Global {
-public:
-	int xres, yres;
-	Shape box[4];
-	Particle particle[MAX_PARTICLES];
-	int n;
-	Global();
-} g;
-
-class X11_wrapper {
-private:
-	Display *dpy;
-	Window win;
-	GLXContext glc;
-public:
-	~X11_wrapper();
-	X11_wrapper();
-	void set_title();
-	bool getXPending();
-	XEvent getXNextEvent();
-	void swapBuffers();
-} x11;
-
 class Image {
 public:
 	int width, height;
@@ -146,8 +128,39 @@ public:
 			unlink(ppmname);
 	}
 };
+Image img[1] = { "volcano.jpg" };
 
-Image img = "Goo.PNG";
+
+class Global {
+public:
+	int xres, yres;
+	Shape box[6];
+	GLuint volcanoTexture;
+	int showVolcano;
+	Particle particle[MAX_PARTICLES];
+	int n;
+	Global();
+} g;
+
+class Volcano {
+public:
+	Vect pos;
+	Vect vel;
+} volcano;
+
+class X11_wrapper {
+private:
+	Display *dpy;
+	Window win;
+	GLXContext glc;
+public:
+	~X11_wrapper();
+	X11_wrapper();
+	void set_title();
+	bool getXPending();
+	XEvent getXNextEvent();
+	void swapBuffers();
+} x11;
 
 //Function prototypes
 void init_opengl(void);
@@ -181,7 +194,6 @@ int main()
 	cleanup_fonts();
 	return 0;
 }
-
 //-----------------------------------------------------------------------------
 //Global class functions
 //-----------------------------------------------------------------------------
@@ -190,6 +202,9 @@ Global::Global()
 	xres = 800;
 	yres = 600;
 	n = 0;
+	showVolcano = 1;
+	volcano.pos[0] = 680;
+	volcano.pos[1] = 75;
 }
 
 //-----------------------------------------------------------------------------
@@ -268,27 +283,45 @@ void init_opengl(void)
 	//Set 2D mode (no perspective)
 	glOrtho(0, g.xres, 0, g.yres, -1, 1);
 	//Set the screen background color
-	glClearColor(0.1, 0.1, 0.1, 1.0);
+	glClearColor(0.12, 0.15, 0.16, 1.0);
 	//Do this to allow fonts
 	glEnable(GL_TEXTURE_2D);
 	initialize_fonts();
+	//	volcanoImage     = ppm6GetImage("./volcano.ppm");
+	glGenTextures(1, &g.volcanoTexture);
+	//-------------------------------------------------------------------------
+	//volcano
+	//
+	int w = img[0].width;
+	int h = img[0].height;
+	//
+	glBindTexture(GL_TEXTURE_2D, g.volcanoTexture);
+	//
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, 3, w, h, 0,
+		GL_RGB, GL_UNSIGNED_BYTE, img[0].data);
 }
 
 void makeParticle(int x, int y)
 {
 	//Add a particle to the particle system.
-	//
 	if (g.n >= MAX_PARTICLES)
 		return;
-	cout << "makeParticle() " << x << " " << y << endl;
+	//cout << "makeParticle() " << x << " " << y << endl;
 	//set position of particle
 	Particle *p = &g.particle[g.n];
 	p->s.center.x = x;
 	p->s.center.y = y;
-	p->velocity.y = 0.0;
-	//p->velocity.y =  ((double)rand()/(double)RAND_MAX)-0.5 - .25;
-	p->velocity.y = 0;
-	p->velocity.x =  ((double)rand()/(double)RAND_MAX)-0.5 +0.85;
+	p->velocity.y = 1;
+	p->velocity.x =  ((double)rand()/(double)RAND_MAX) - 0.5 + 1.5;
+	// Assigning Lava-like colors to the particles
+	p->color.r = (rand() % (55)) + 200;
+        if (rand() % 2 == 0)
+			p->color.g = (rand() % 140) + 60;
+		else 
+			p->color.g = 0;
+		p->color.b = 5;
 	++g.n;
 }
 
@@ -311,17 +344,10 @@ void check_mouse(XEvent *e)
 	if (e->type == ButtonPress) {
 		if (e->xbutton.button==1) {
 			//Left button was pressed.
-			int y = g.yres - e->xbutton.y;
-			makeParticle(e->xbutton.x, y);
-			makeParticle(e->xbutton.x, y);
-			makeParticle(e->xbutton.x, y);
-			makeParticle(e->xbutton.x, y);
-			makeParticle(e->xbutton.x, y);
-			makeParticle(e->xbutton.x, y);
-			makeParticle(e->xbutton.x, y);
-			makeParticle(e->xbutton.x, y);
-			makeParticle(e->xbutton.x, y);
-			return;
+			//int y = g.yres - e->xbutton.y;
+			//for (int i = 0; i < 30; i++)
+			//makeParticle(e->xbutton.x, y);
+			//return;
 		}
 		if (e->xbutton.button==3) {
 			//Right button was pressed.
@@ -334,11 +360,9 @@ void check_mouse(XEvent *e)
 			savex = e->xbutton.x;
 			savey = e->xbutton.y;
 			//Code placed here will execute whenever the mouse moves.
-			int y = g.yres - e->xbutton.y;
-			for (int i =0; i < 10; i++)
-			makeParticle(e->xbutton.x, y);
-
-
+			//int y = g.yres - e->xbutton.y;
+			//for (int i =0; i < 10; i++)
+			//makeParticle(e->xbutton.x, y);
 		}
 	}
 }
@@ -376,47 +400,51 @@ void movement()
 		p->velocity.y -= GRAVITY;
 
 		//check for collision with shapes...
+		//Box shift scale
 		int x_scale = 100;
 		int y_scale = 75;
 		g.box[0].center.x = 150;
 		g.box[0].center.y = 475;
-		for (int j = 0; j < 6; j++) {
+		
+		//for loop to create the hixboxes for the five boxes
+		for (int j = 0; j < 5; j++) {
 			g.box[j].center.x = 150 + j * x_scale;
 			g.box[j].center.y = 475 - j * y_scale;
 			if (p->s.center.y < g.box[j].center.y + g.box[j].height &&
 				p->s.center.x > g.box[j].center.x - g.box[j].width &&
 				p->s.center.x < g.box[j].center.x + g.box[j].width &&
 				p->s.center.y > g.box[j].center.y - g.box[j].height) {
+				// solution for bottom-box hit collisions
 				if (p->velocity.y < 0) {
 					p->s.center.y = g.box[j].center.y + g.box[j].height;
-				}
-				else {
+				} else {
 					p->s.center.y = g.box[j].center.y - g.box[j].height;
 				}
-				p->velocity.y = -(p->velocity.y * 0.8);
+				p->velocity.y = -(p->velocity.y * .5);
+				p->velocity.x = (p->velocity.x * 1);
 			}
 		}
-
-		//g.box[1].center.x = 225;
-		//g.box[1].center.y = 400;
-
-/*		if (p->s.center.y < g.box[1].center.y + g.box[1].height &&
-			p->s.center.x > g.box[1].center.x - g.box[1].width &&
-			p->s.center.x < g.box[1].center.x + g.box[1].width &&
-			p->s.center.y > g.box[1].center.y - g.box[1].height) {
+		
+		//Hitbox to launch particles out of volcano
+		g.box[5].center.x = 670;
+		g.box[5].center.y = 75;
+		if (p->s.center.y < g.box[5].center.y + g.box[5].height &&
+			p->s.center.x > g.box[5].center.x - g.box[5].width &&
+			p->s.center.x < g.box[5].center.x + g.box[5].width &&
+			p->s.center.y > g.box[5].center.y - g.box[5].height) {
 			if (p->velocity.y < 0) {
-				p->s.center.y = g.box[1].center.y + g.box[1].height;
+				p->s.center.y = g.box[5].center.y + g.box[5].height;
+			} else {
+				p->s.center.y = g.box[5].center.y - g.box[5].height;
 			}
-			else {
-				p->s.center.y = g.box[1].center.y - g.box[1].height;
-			}
-			p->velocity.y = -(p->velocity.y * 0.8);
+			p->velocity.y = -(p->velocity.y * 6.0);
+			p->velocity.x = ((double)rand() / (RAND_MAX) *(2-0));
 		}
-*/
+
 		//check for off-screen
-		if (p->s.center.y < 0.0) {
+		if (p->s.center.y < 0.0 || p->s.center.y > 610) {
 			//cout << "off screen" << endl;
-			g.particle[i] = g.particle[g.n - i];
+			g.particle[i] = g.particle[g.n - 1];
 			--g.n;
 		}
 	}
@@ -427,10 +455,13 @@ void render()
 	glClear(GL_COLOR_BUFFER_BIT);
 	//Drawing the first shape
 	//draw the box
+	// Shift scale for the five boxes
 	int x_scale = 100;
 	int y_scale = 75;
 
 	float h, w;
+	// Boxes being drawn in this loop
+	// For loop to create my five boxes concisely
 
 	for (int i = 0; i < 5; i++) {
 		g.box[i].center.x = 150 + i * x_scale;
@@ -448,48 +479,63 @@ void render()
 		glEnd();
 		glPopMatrix();
 	}
-/*	//Draw Box 2
-	glColor3ub(255, 143, 143);
-	glPushMatrix();
-	glTranslatef(225, 400, 0);
-	w = g.box[1].width;
-	h = g.box[1].height;
-	glBegin(GL_QUADS);
-	glVertex2i(-w, -h);
-	glVertex2i(-w, h);
-	glVertex2i(w, h);
-	glVertex2i(w, -h);
-	glEnd();
-	glPopMatrix();
-*/
-	//
+	//Particles being created here for demonstration
+	for (int i = 0; i < 20; i++) {
+		makeParticle(75, 605);
+	}
 	//Draw particles here
 	//if (g.n > 0) 
-	for (int i=0; i <g.n; i++){
+	for (int i = 0; i < g.n; i++) {
 		//There is at least one particle to draw.
 		glPushMatrix();
-		glColor3ub(10,255,63);
-		Vec *c = &g.particle[i].s.center;
-		w = h = 2;
+		glColor3ub(g.particle[i].color.r, g.particle[i].color.g, g.particle[i].color.b);
+		Vec* c = &g.particle[i].s.center;
+		//Making particles different sizes
+		if (i % 2 == 0)
+			w = h = 1;
+		else
+			w = h = 2;
 		glBegin(GL_QUADS);
-			glVertex2i(c->x-w, c->y-h);
-			glVertex2i(c->x-w, c->y+h);
-			glVertex2i(c->x+w, c->y+h);
-			glVertex2i(c->x+w, c->y-h);
+		glVertex2i(c->x - w, c->y - h);
+		glVertex2i(c->x - w, c->y + h);
+		glVertex2i(c->x + w, c->y + h);
+		glVertex2i(c->x + w, c->y - h);
 		glEnd();
 		glPopMatrix();
 	}
-	//
 	//Draw your 2D text here
-	Rect r[1];
-	r[0].bot = (g.yres/2)-105;
-	r[0].left = g.xres/2;
-	r[0].center = 0;
-	ggprint8b(&r[0], 16, 0xff0008f, "Requirements");
+	// Initializing 5 text boxes for my waterfall model
+	// For loop to create my five boxes with the text
+	glEnable(GL_TEXTURE_2D);
+	Rect r[5];
+	string waterfall[5] = { "Requirements", "Design", "Coding", "   Testing",
+		"Maintenance" };
+	for (int i = 0; i < 5; ++i) {
+		string tmp = waterfall[i];
+		r[i].bot = g.box[0].center.y - 5 - (i * 75);
+		r[i].left = g.box[0].center.x -14 + (i * 75 + i * 20);
+		r[i].center = 0;
+		if (i == 0) {
+			r[i].left = 117;
+		}
+		ggprint8b(&r[i], 16, 0xffffff, tmp.c_str());
+	}
+
+	glDisable(GL_TEXTURE_2D);
+	glEnable(GL_TEXTURE_2D);
+	float wid = 120.0f;
+	if (g.showVolcano) {
+		glPushMatrix();
+		glTranslatef(volcano.pos[0], volcano.pos[1], volcano.pos[2]);
+		glBindTexture(GL_TEXTURE_2D, g.volcanoTexture);
+		glBegin(GL_QUADS);
+		glTexCoord2f(1.0f, 1.0f); glVertex2i(-wid*.70, -wid*.70);
+		glTexCoord2f(1.0f, 0.0f); glVertex2i(-wid*.70, wid * .70);
+		glTexCoord2f(0.0f, 0.0f); glVertex2i(wid*.70, wid*.70);
+		glTexCoord2f(0.0f, 1.0f); glVertex2i(wid*.70, -wid* .70);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glEnd();
+		glPopMatrix();
+	}
+	glDisable(GL_TEXTURE_2D);
 }
-
-
-
-
-
-
